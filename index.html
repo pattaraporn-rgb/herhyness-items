@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ค้นหาสินค้า HER HYNESS</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans Thai','Segoe UI',Tahoma,sans-serif;background:#f4f1ec;color:#2b2b2b;padding:20px;line-height:1.5}
+.wrap{max-width:780px;margin:0 auto}
+h1{font-size:22px;font-weight:800;color:#1f3a5f;margin-bottom:4px}
+.sub{color:#7a7a7a;font-size:13px;margin-bottom:16px}
+.searchbox{position:sticky;top:10px;z-index:10}
+#q{width:100%;padding:16px 18px;font-size:20px;border:2px solid #1f3a5f;border-radius:14px;outline:none;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+#q:focus{border-color:#c0392b;box-shadow:0 4px 20px rgba(192,57,43,.18)}
+.hint{font-size:12px;color:#999;margin:8px 2px 12px}
+.count{font-size:13px;color:#1f3a5f;font-weight:600;margin:6px 2px 12px}
+.card{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);border-left:5px solid #1f3a5f}
+.card.new{border-left-color:#c0392b}
+.snrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sn{font-size:19px;font-weight:800;color:#1f3a5f;cursor:pointer;border-bottom:2px dashed #b9c4d4;transition:.15s}
+.sn:hover{color:#c0392b;border-bottom-color:#c0392b}
+.copybtn{font-size:12px;font-weight:700;border:1px solid #1f3a5f;color:#1f3a5f;background:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;transition:.15s;white-space:nowrap}
+.copybtn:hover{background:#1f3a5f;color:#fff}
+.copybtn.done{background:#27ae60;border-color:#27ae60;color:#fff}
+.badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8eef5;color:#1f3a5f;letter-spacing:.3px}
+.badge.semi{background:#fef3e2;color:#b9770e}
+.badge.new{background:#fdecea;color:#c0392b}
+.codes{margin-top:9px;display:flex;flex-wrap:wrap;gap:7px}
+.code{font-family:'Consolas',monospace;font-size:13px;background:#f4f1ec;border:1px solid #e0dcd2;border-radius:8px;padding:5px 10px;cursor:pointer}
+.code:hover{border-color:#1f3a5f}
+.code b{color:#888;font-weight:600;font-size:11px;margin-right:5px}
+.code.hit{background:#fff4cc;border-color:#e6c200}
+.code.alias{background:#eafaf0;border-color:#a9dfc0}
+.names{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.nm{font-size:11px;color:#777;background:#f7f5f0;border-radius:6px;padding:3px 8px}
+.nm b{color:#aaa;font-weight:600}
+.desc{margin-top:8px;font-size:12px;color:#999}
+mark{background:#ffe066;padding:0 1px;border-radius:2px}
+.empty{text-align:center;color:#aaa;padding:40px 0;font-size:15px}
+.errbox{background:#fdecea;border:1px solid #f5c6c0;color:#c0392b;border-radius:12px;padding:16px;font-size:14px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#27ae60;color:#fff;padding:10px 22px;border-radius:30px;font-weight:700;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.2);opacity:0;transition:.25s;pointer-events:none;z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style></head><body><div class="wrap">
+<h1>🔍 ค้นหาสินค้า HER HYNESS</h1>
+<div class="sub">พิมพ์ <b>รหัสสินค้า</b> หรือ <b>ชื่อใบเสร็จ</b> → ดู Search Name • <b>คลิกที่ชื่อหรือปุ่ม Copy เพื่อคัดลอก</b></div>
+<div class="searchbox"><input id="q" type="text" placeholder="เช่น  293874  /  8859572801513  /  PEPTIDE CREAM 30ML  /  กันแดด" autocomplete="off" autofocus></div>
+<div class="hint" id="hint">กำลังโหลดข้อมูล...</div>
+<div class="count" id="count"></div><div id="results"></div></div>
+<div id="toast">คัดลอกแล้ว ✓</div><script>
+let DATA=[];
+const q=document.getElementById('q'),res=document.getElementById('results'),cnt=document.getElementById('count'),toast=document.getElementById('toast'),hint=document.getElementById('hint');
+function norm(s){return (s||'').toString().toLowerCase().replace(/\s+/g,'');}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function hl(s,term){if(!term)return esc(s);const raw=s.toLowerCase();const j=raw.indexOf(term);
+  if(j>=0)return esc(s.slice(0,j))+'<mark>'+esc(s.slice(j,j+term.length))+'</mark>'+esc(s.slice(j+term.length));return esc(s);}
+function badge(p){if(p.src==='csv-new')return '<span class="badge new">ใหม่ (เจอใน CSV)</span>';
+  if(p.type==='SEMI')return '<span class="badge semi">SEMI</span>';if(p.type==='BUNDLE')return '<span class="badge semi">BUNDLE</span>';
+  return '<span class="badge">'+(p.type||'NORMAL')+'</span>';}
+let T;function showToast(m){toast.textContent=m+' ✓';toast.classList.add('show');clearTimeout(T);T=setTimeout(()=>toast.classList.remove('show'),1300);}
+function copy(text,btn){const done=()=>{showToast('คัดลอก: '+text);if(btn){btn.classList.add('done');const o=btn.textContent;btn.textContent='✓ คัดลอกแล้ว';setTimeout(()=>{btn.classList.remove('done');btn.textContent=o;},1300);}};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(()=>fb(text,done));}else fb(text,done);}
+function fb(text,done){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity=0;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){}document.body.removeChild(ta);}
+function render(term){const nt=norm(term);let list;
+  if(!nt)list=DATA;else list=DATA.filter(p=>{const codes=[p.barcode,p.watsons,p.erp,...(p.alias||[])].map(norm);
+    if(codes.some(c=>c&&c.includes(nt)))return true;if(norm(p.sn).includes(nt))return true;
+    if((p.names||[]).some(n=>norm(n).includes(nt)))return true;if(norm(p.desc).includes(nt))return true;return false;});
+  if(nt)list=list.slice().sort((a,b)=>{const ea=[a.barcode,a.watsons,a.erp,...(a.alias||[])].some(c=>norm(c)===nt)||norm(a.sn)===nt;
+    const eb=[b.barcode,b.watsons,b.erp,...(b.alias||[])].some(c=>norm(c)===nt)||norm(b.sn)===nt;return (eb?1:0)-(ea?1:0);});
+  cnt.textContent= nt?('พบ '+list.length+' รายการ'):('ทั้งหมด '+list.length+' รายการ');
+  if(!list.length){res.innerHTML='<div class="empty">ไม่พบ 🙁 ลองพิมพ์เลขบางส่วน หรือชื่อสินค้า</div>';return;}
+  res.innerHTML=list.slice(0,300).map(p=>{
+    const mk=(label,val,cls)=>{if(!val)return '';const hit=nt&&norm(val).includes(nt);
+      return '<span class="code '+(cls||'')+(hit?' hit':'')+'" data-copy="'+esc(val)+'"><b>'+label+'</b>'+hl(val,nt)+'</span>';};
+    let codes=mk('บาร์โค้ด',p.barcode)+mk('ร้าน',p.watsons)+mk('ERP',p.erp);(p.alias||[]).forEach(a=>codes+=mk('CSV',a,'alias'));
+    let names=(p.names||[]).map(n=>'<span class="nm"><b>ใบเสร็จ:</b> '+hl(n,nt)+'</span>').join('');
+    return '<div class="card'+(p.src==='csv-new'?' new':'')+'"><div class="snrow"><span class="sn" data-copy="'+esc(p.sn)+'" title="คลิกเพื่อคัดลอก">'+hl(p.sn,nt)+'</span>'+
+      badge(p)+'<button class="copybtn" data-copy="'+esc(p.sn)+'">📋 Copy</button></div><div class="codes">'+codes+'</div>'+
+      (names?'<div class="names">'+names+'</div>':'')+(p.desc?'<div class="desc">'+hl(p.desc,nt)+'</div>':'')+'</div>';}).join('');}
+res.addEventListener('click',e=>{const t=e.target.closest('[data-copy]');if(t)copy(t.getAttribute('data-copy'),t.classList.contains('copybtn')?t:null);});
+q.addEventListener('input',e=>render(e.target.value));
+// load data
+fetch('products.json').then(r=>{if(!r.ok)throw new Error('http');return r.json();}).then(d=>{
+  DATA=d;hint.textContent='ค้นได้ทั้งรหัส (บาร์โค้ด/ร้าน/ERP), ชื่อใบเสร็จ และชื่อไทย • รวม '+d.length+' รายการ';render('');
+}).catch(e=>{
+  hint.innerHTML='';
+  res.innerHTML='<div class="errbox"><b>โหลดข้อมูลไม่ได้</b><br>ไฟล์นี้ต้องเปิดผ่านเว็บ (GitHub Pages) หรือเซิร์ฟเวอร์ ไม่สามารถดับเบิลคลิกเปิดตรงๆ จากเครื่องได้ เพราะระบบความปลอดภัยของเบราว์เซอร์<br><br>เมื่ออัปขึ้น GitHub Pages แล้วจะใช้งานได้ปกติ ✓</div>';
+});
+</script></body></html>
